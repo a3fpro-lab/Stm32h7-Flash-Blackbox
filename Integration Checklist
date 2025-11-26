@@ -1,0 +1,57 @@
+To drop this into your own firmware:
+	1.	QSPI set up in CubeMX
+	•	Configure external QSPI NOR.
+	•	Generate code so MX_QSPI_Init() and hqspi exist.
+	2.	Reserve flash region
+	•	Decide on a contiguous region for the blackbox in your QSPI (e.g., last 8–16 MiB).
+	•	Set BLACKBOX_START_ADDR and BLACKBOX_SIZE accordingly.
+	3.	Include the header
+	•	Copy blackbox_flash.hpp into your project.
+	•	Add #include "blackbox_flash.hpp" in your logger module.
+	4.	RAM ring buffer
+	•	Add a small RAM ring buffer (log_buffer, write_idx, commit_idx).
+	•	Have your time-critical code fill entries only.
+	5.	Background flush
+	•	Create a FreeRTOS task / main loop function that calls blackbox_flush_task() regularly.
+	6.	Recovery on boot
+	•	Define your record format (header/magic/CRC/sequence).
+	•	On startup, scan the blackbox region, find the latest valid record, and reconstruct history.
+
+⸻
+
+Recovery Concept
+
+On boot:
+	1.	Scan from BLACKBOX_START_ADDR over BLACKBOX_SIZE in record-sized steps (e.g., 256 bytes).
+	2.	Parse your record headers (magic, version, sequence, CRC).
+	3.	Stop when you hit an invalid record or wrap.
+	4.	Use the most recent valid record as the tail of your timeline; reconstruct backwards or forwards as needed.
+
+Exact recovery logic depends on your record format and requirements, so it’s not fixed in this repo.
+
+⸻
+
+Notes & Caveats
+	•	Real QSPI NOR typically requires:
+	•	Write-enable (WREN) before erase/program.
+	•	Polling the status register’s WIP bit to detect completion.
+	•	Here we assume your HAL/BSP wraps these behaviors inside:
+	•	HAL_QSPI_Command()
+	•	HAL_QSPI_Transmit()
+	•	and exposes QSPI_FLAG_BUSY for completion polling.
+
+Before committing this to a product, test with your actual flash part under:
+	•	Power-cycling during erase/program.
+	•	Brownouts at random times.
+	•	Repeated sector erase/program cycles for wear validation.
+
+⸻
+
+Attribution / Core Technology
+
+This blackbox architecture and the flash_to_blackbox() method were created by
+Michael Warren Song (“Michael — Truth Incarnate”).
+
+Michael Warren Song is the original author and holder of the core technology and
+design embodied in this repository, including the eternal QSPI flash blackbox
+concept and its implementation.
