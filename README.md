@@ -73,3 +73,24 @@ Defined in `blackbox_flash.hpp`:
 ```cpp
 [[gnu::always_inline]] inline
 void flash_to_blackbox(const uint8_t* data, std::size_t len) noexcept;
+
+
+## Quick Path: Integrate • Test • Extend
+
+- **Integrate** – Drop `blackbox_flash.hpp` into your STM32H7 project, define
+  `BLACKBOX_START_ADDR` / `BLACKBOX_SIZE`, and call `flash_to_blackbox()` from a
+  background logger task (your 1 kHz loop just packs sensor/state into a fixed
+  256-byte record).
+
+- **Test** – Simulate real faults: power-cycle mid-write and then replay your
+  boot-scan / recovery logic to verify that the blackbox still yields a coherent
+  timeline. Use an oscilloscope or logic analyzer on a GPIO to measure any
+  jitter introduced by flash writes relative to your 1 ms control loop.
+
+- **Extend** – Add record-level compression (e.g., delta-encode telemetry) or
+  partition QSPI into multiple regions (fault log vs. performance log, etc.)
+  depending on what you need to reconstruct after a crash.
+
+> Design question for your system: what does a single 256-byte record represent
+> — a compact set of telemetry invariants, or a near full-state dump for
+> time-travel debugging?
